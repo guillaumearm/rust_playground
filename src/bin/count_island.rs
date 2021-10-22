@@ -1,5 +1,6 @@
-use garm_playground::libs::island;
+// use garm_playground::libs::island;
 
-fn main() -> island::AppResult {
-    island::run()
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // island::run()?;
+    return Ok(());
 }

@@ -10,7 +10,7 @@ mod constants {
     pub const RADIX_BASE: u32 = 36;
 }
 
-use constants::*;
+pub use constants::*;
 
 /*
  * Errors

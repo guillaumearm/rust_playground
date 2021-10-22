@@ -27,31 +27,36 @@ impl<'a> Cursor<'a> {
     pub fn read(&self) -> Cell {
         let Cursor { map, x, y } = *self;
         return map
-            .get(x, y)
+            .get((x, y))
             .expect(format!("[FATAL] invalid cursor read at x:{} y:{}", x, y).as_str());
     }
 
-    pub fn get(&self, x: usize, y: usize) -> Option<Cursor<'a>> {
+    pub fn get(&self, (x, y): (usize, usize)) -> Option<Cursor<'a>> {
         let Cursor { map, .. } = self;
-        map.get(x, y).and(Some(Cursor { map, x, y }))
+        map.get((x, y)).and(Some(Cursor { map, x, y }))
     }
 
     pub fn move_next_line(&self) -> Option<Cursor<'a>> {
-        self.get(0, self.y + 1)
+        self.get((0, self.y + 1))
     }
 
     pub fn move_dir(&self, dir: Direction) -> Option<Cursor<'a>> {
         let Cursor { x, y, .. } = *self;
         match dir {
-            Up => self.get(x, y - 1),
-            Down => self.get(x, y + 1),
-            Left => self.get(x - 1, y),
-            Right => self.get(x + 1, y),
+            Up if y > 0 => self.get((x, y - 1)),
+            Left if x > 0 => self.get((x - 1, y)),
+            Down => self.get((x, y + 1)),
+            Right => self.get((x + 1, y)),
+            _ => None,
         }
     }
 
     pub fn iter(&self) -> CursorIter<'a> {
         CursorIter::new(*self)
+    }
+
+    pub fn coord(&self) -> (usize, usize) {
+        (self.x, self.y)
     }
 }
 
@@ -99,5 +104,12 @@ mod tests {
         let cells: Vec<Cell> = map.cursor().iter().map(|c| c.read()).collect();
 
         assert_eq!(cells, vec![Earth, Sea, MarkedEarth('0')]);
+    }
+
+    #[test]
+    fn name() {
+        let mut map: Map = "# \n0".parse().unwrap();
+        let coord = map.cursor().coord();
+        map.write(coord, Sea);
     }
 }

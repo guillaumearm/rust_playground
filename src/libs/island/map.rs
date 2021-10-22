@@ -1,6 +1,6 @@
 use super::cell::Cell;
 use super::cursor::Cursor;
-use super::error::Error;
+use super::error::{Error, ErrorList};
 use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
@@ -10,25 +10,31 @@ type MapData = Vec<Vec<Cell>>;
 #[derive(Debug)]
 pub struct Map(MapData);
 
-type MapResult<T = Map> = Result<T, Vec<Error>>;
+pub type MapResult<T = Map> = Result<T, ErrorList>;
 
 impl Map {
-    pub fn get(self: &Self, x: usize, y: usize) -> Option<Cell> {
+    pub fn get(&self, (x, y): (usize, usize)) -> Option<Cell> {
         let Map(data) = self;
         return data.get(y)?.get(x).map(|cell| *cell);
     }
 
-    pub fn cursor(self: &Self) -> Cursor {
+    pub fn write(&mut self, (x, y): (usize, usize), new_cell: Cell) -> Option<()> {
+        let Map(data) = self;
+
+        data.get_mut(y)?.get_mut(x).map(|cell| *cell = new_cell)
+    }
+
+    pub fn cursor(&self) -> Cursor {
         Cursor::new(self)
     }
 }
 
 impl FromStr for Map {
-    type Err = Vec<Error>;
+    type Err = ErrorList;
 
     fn from_str(s: &str) -> MapResult {
         if s.len() == 0 {
-            return Err(vec![Error::EmptyMap]);
+            return Err(ErrorList(vec![Error::EmptyMap]));
         }
 
         let mut errors: Vec<Error> = vec![];
@@ -63,7 +69,7 @@ impl FromStr for Map {
         if errors.len() == 0 {
             Ok(Map(map_data))
         } else {
-            Err(errors)
+            Err(ErrorList(errors))
         }
     }
 }
@@ -120,7 +126,7 @@ mod tests {
             let result: MapResult = "".parse();
             let errors = result.unwrap_err();
 
-            assert_eq!(errors, vec![Error::EmptyMap]);
+            assert_eq!(errors, ErrorList(vec![Error::EmptyMap]));
         }
 
         #[test]
@@ -131,12 +137,12 @@ mod tests {
 
             assert_eq!(
                 result.unwrap_err(),
-                vec![
+                ErrorList(vec![
                     Error::EmptyLine(1),
                     Error::EmptyLine(3),
                     Error::EmptyLine(5),
                     Error::EmptyLine(6)
-                ]
+                ])
             );
         }
 
@@ -148,7 +154,7 @@ mod tests {
 
             assert_eq!(
                 result.unwrap_err(),
-                vec![
+                ErrorList(vec![
                     Error::InvalidChar {
                         char: '@',
                         col: 1,
@@ -164,7 +170,7 @@ mod tests {
                         col: 2,
                         line: 3
                     },
-                ]
+                ])
             );
         }
 
@@ -176,7 +182,7 @@ mod tests {
 
             assert_eq!(
                 result.unwrap_err(),
-                vec![
+                ErrorList(vec![
                     Error::EmptyLine(1),
                     Error::InvalidChar {
                         char: '@',
@@ -184,7 +190,7 @@ mod tests {
                         col: 1
                     },
                     Error::EmptyLine(3),
-                ]
+                ])
             )
         }
     }
@@ -224,28 +230,69 @@ mod tests {
             let map: Map = RAW_VALID_MAP.parse().unwrap();
 
             // entire line 1
-            assert_eq!(map.get(0, 0), Some(Earth));
-            assert_eq!(map.get(1, 0), Some(Sea));
-            assert_eq!(map.get(2, 0), Some(Sea));
+            assert_eq!(map.get((0, 0)), Some(Earth));
+            assert_eq!(map.get((1, 0)), Some(Sea));
+            assert_eq!(map.get((2, 0)), Some(Sea));
 
             // line 2 and 3
-            assert_eq!(map.get(0, 1), Some(Earth));
-            assert_eq!(map.get(0, 2), Some(Sea));
+            assert_eq!(map.get((0, 1)), Some(Earth));
+            assert_eq!(map.get((0, 2)), Some(Sea));
 
             // entire line 3
-            assert_eq!(map.get(0, 3), Some(Earth));
-            assert_eq!(map.get(1, 3), Some(Sea));
-            assert_eq!(map.get(2, 3), Some(MarkedEarth('0')));
+            assert_eq!(map.get((0, 3)), Some(Earth));
+            assert_eq!(map.get((1, 3)), Some(Sea));
+            assert_eq!(map.get((2, 3)), Some(MarkedEarth('0')));
         }
 
         #[test]
         fn invalid_coord() {
             let map: Map = RAW_VALID_MAP.parse().unwrap();
 
-            assert_eq!(map.get(3, 0), None);
-            assert_eq!(map.get(0, 4), None);
-            assert_eq!(map.get(3, 3), None);
-            assert_eq!(map.get(42, 42), None);
+            assert_eq!(map.get((3, 0)), None);
+            assert_eq!(map.get((0, 4)), None);
+            assert_eq!(map.get((3, 3)), None);
+            assert_eq!(map.get((42, 42)), None);
+        }
+    }
+
+    mod write {
+        use super::*;
+
+        #[test]
+        fn simple_write() {
+            let mut map: Map = "000\n".parse().unwrap();
+
+            assert_eq!("000\n", map.to_string());
+            assert_eq!(Some(()), map.write((0, 0), Cell::Earth));
+            assert_eq!("#00\n", map.to_string());
+        }
+
+        #[test]
+        fn multiple_write() {
+            let mut map: Map = "00\n00\n".parse().unwrap();
+
+            assert_eq!("00\n00\n", map.to_string());
+
+            assert_eq!(Some(()), map.write((0, 0), Cell::Earth));
+            assert_eq!("#0\n00\n", map.to_string());
+
+            assert_eq!(Some(()), map.write((1, 0), Cell::Sea));
+            assert_eq!("# \n00\n", map.to_string());
+
+            assert_eq!(Some(()), map.write((0, 1), Cell::MarkedEarth('1')));
+            assert_eq!("# \n10\n", map.to_string());
+
+            assert_eq!(Some(()), map.write((1, 1), Cell::MarkedEarth('2')));
+            assert_eq!("# \n12\n", map.to_string());
+        }
+
+        #[test]
+        fn invalid_write() {
+            let mut map: Map = "000\n".parse().unwrap();
+
+            assert_eq!("000\n", map.to_string());
+            assert_eq!(None, map.write((0, 1), Cell::Earth));
+            assert_eq!("000\n", map.to_string());
         }
     }
 }

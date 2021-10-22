@@ -31,6 +31,31 @@ impl fmt::Debug for Error {
 
 impl std::error::Error for Error {}
 
+#[derive(PartialEq)]
+pub struct ErrorList(pub Vec<Error>);
+
+impl fmt::Display for ErrorList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let ErrorList(errors) = self;
+
+        let errors: Vec<String> = errors.iter().map(|e| format!("{}", e)).collect();
+
+        write!(f, "{}", errors.join("\n"))
+    }
+}
+
+impl fmt::Debug for ErrorList {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self)
+    }
+}
+
+impl From<Vec<Error>> for ErrorList {
+    fn from(errors: Vec<Error>) -> Self {
+        ErrorList(errors)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
