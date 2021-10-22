@@ -1,0 +1,16 @@
+[package]
+name = "garm_playground"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+default-run = "count_island"
+
+[[bin]]
+name = "count_island"
+path = "src/bin/count_island.rs"
+
+# Dependencies
+
+[dependencies]
