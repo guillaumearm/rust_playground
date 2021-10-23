@@ -108,7 +108,7 @@ mod tests {
 
     #[test]
     fn name() {
-        let mut map: Map = "# \n0".parse().unwrap();
+        let map: Map = "# \n0".parse().unwrap();
         let coord = map.cursor().coord();
         map.write(coord, Sea);
     }

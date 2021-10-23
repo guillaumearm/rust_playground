@@ -1,6 +1,7 @@
 use super::cell::Cell;
 use super::cursor::Cursor;
 use super::error::{Error, ErrorList};
+use std::cell::RefCell;
 use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
@@ -8,20 +9,23 @@ use std::str::FromStr;
 type MapData = Vec<Vec<Cell>>;
 
 #[derive(Debug)]
-pub struct Map(MapData);
+pub struct Map(RefCell<MapData>);
 
 pub type MapResult<T = Map> = Result<T, ErrorList>;
 
 impl Map {
     pub fn get(&self, (x, y): (usize, usize)) -> Option<Cell> {
         let Map(data) = self;
-        return data.get(y)?.get(x).map(|cell| *cell);
+        return data.borrow().get(y)?.get(x).map(|cell| *cell);
     }
 
-    pub fn write(&mut self, (x, y): (usize, usize), new_cell: Cell) -> Option<()> {
+    pub fn write(&self, (x, y): (usize, usize), new_cell: Cell) -> Option<()> {
         let Map(data) = self;
 
-        data.get_mut(y)?.get_mut(x).map(|cell| *cell = new_cell)
+        data.borrow_mut()
+            .get_mut(y)?
+            .get_mut(x)
+            .map(|cell| *cell = new_cell)
     }
 
     pub fn cursor(&self) -> Cursor {
@@ -67,7 +71,7 @@ impl FromStr for Map {
             .collect();
 
         if errors.len() == 0 {
-            Ok(Map(map_data))
+            Ok(Map(RefCell::new(map_data)))
         } else {
             Err(ErrorList(errors))
         }
@@ -78,6 +82,7 @@ impl fmt::Display for Map {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Map(data) = self;
         let raw_map: String = data
+            .borrow()
             .iter()
             .map(|line| {
                 line.iter()
@@ -110,7 +115,7 @@ mod tests {
         fn valid_map() -> MapResult<()> {
             let Map(map_data) = RAW_VALID_MAP.parse()?;
             assert_eq!(
-                map_data,
+                *map_data.borrow(),
                 vec![
                     vec![Earth, Sea, Sea],
                     vec![Earth, Earth, Earth],
@@ -260,7 +265,7 @@ mod tests {
 
         #[test]
         fn simple_write() {
-            let mut map: Map = "000\n".parse().unwrap();
+            let map: Map = "000\n".parse().unwrap();
 
             assert_eq!("000\n", map.to_string());
             assert_eq!(Some(()), map.write((0, 0), Cell::Earth));
@@ -269,7 +274,7 @@ mod tests {
 
         #[test]
         fn multiple_write() {
-            let mut map: Map = "00\n00\n".parse().unwrap();
+            let map: Map = "00\n00\n".parse().unwrap();
 
             assert_eq!("00\n00\n", map.to_string());
 
@@ -288,7 +293,7 @@ mod tests {
 
         #[test]
         fn invalid_write() {
-            let mut map: Map = "000\n".parse().unwrap();
+            let map: Map = "000\n".parse().unwrap();
 
             assert_eq!("000\n", map.to_string());
             assert_eq!(None, map.write((0, 1), Cell::Earth));

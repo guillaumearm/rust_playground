@@ -10,29 +10,33 @@ use Cell::*;
 // TODO errors: replace Option type with Result
 pub struct Filler {
     pub map: Map,
-    cell: Option<Cell>,
+    cell: std::cell::Cell<Option<Cell>>,
 }
 
 impl Filler {
     pub fn new(map: Map) -> Self {
         let cell = Some(MarkedEarth('0'));
-        Filler { map, cell }
+        Filler {
+            map,
+            cell: std::cell::Cell::new(cell),
+        }
     }
 
-    pub fn fill(&mut self, coord: (usize, usize)) -> Option<()> {
-        self.cell.and_then(|_| self.fill_cells(Some(coord)))?;
+    pub fn fill(&self, coord: (usize, usize)) -> Option<()> {
+        let cell = self.cell.get();
+        cell.and_then(|_| self.fill_cells(Some(coord)))?;
 
-        let mut cell = self.cell?;
+        let mut cell = cell?;
         let cell = cell.increment().and(Ok(cell)).ok();
 
-        self.cell = cell;
+        self.cell.set(cell);
 
         Some(())
     }
 
-    fn fill_cells(&mut self, coord: Option<(usize, usize)>) -> Option<()> {
+    fn fill_cells(&self, coord: Option<(usize, usize)>) -> Option<()> {
         let coord = coord?;
-        let cell = self.cell?;
+        let cell = self.cell.get()?;
 
         if !self.map.get(coord)?.is_markable() {
             return None;
@@ -99,7 +103,7 @@ mod tests {
     #[test]
     fn fill_simple_one() {
         let map: Map = "#\n".parse().unwrap();
-        let mut filler = Filler::new(map);
+        let filler = Filler::new(map);
 
         assert_eq!("#\n", filler.map.to_string());
         assert_eq!(Some(()), filler.fill((0, 0)));
@@ -109,7 +113,7 @@ mod tests {
     #[test]
     fn fill_simple() {
         let map: Map = SIMPLE_MAP.parse().unwrap();
-        let mut filler = Filler::new(map);
+        let filler = Filler::new(map);
 
         assert_eq!(SIMPLE_MAP, filler.map.to_string());
         assert_eq!(Some(()), filler.fill((0, 0)));
@@ -119,7 +123,7 @@ mod tests {
     #[test]
     fn fill_multiple() {
         let map: Map = COMPLEX_MAP.parse().unwrap();
-        let mut filler = Filler::new(map);
+        let filler = Filler::new(map);
 
         assert_eq!(COMPLEX_MAP, filler.map.to_string());
         assert_eq!(Some(()), filler.fill((0, 0)));
@@ -130,7 +134,7 @@ mod tests {
     #[test]
     fn fill_sea() {
         let map: Map = COMPLEX_MAP.parse().unwrap();
-        let mut filler = Filler::new(map);
+        let filler = Filler::new(map);
 
         assert_eq!(COMPLEX_MAP, filler.map.to_string());
         assert_eq!(None, filler.fill((1, 1)));
@@ -143,7 +147,7 @@ mod tests {
     #[test]
     fn fill_marked_earth() {
         let map: Map = COMPLEX_MAP.parse().unwrap();
-        let mut filler = Filler::new(map);
+        let filler = Filler::new(map);
 
         assert_eq!(COMPLEX_MAP, filler.map.to_string());
         assert_eq!(Some(()), filler.fill((0, 0)));
@@ -156,7 +160,7 @@ mod tests {
     #[test]
     fn fill_overflow() {
         let map: Map = ELEVEN_ISLAND.parse().unwrap();
-        let mut filler = Filler::new(map);
+        let filler = Filler::new(map);
 
         assert_eq!(ELEVEN_ISLAND, filler.map.to_string());
         for x in (0..RADIX_BASE * 2).step_by(2) {
