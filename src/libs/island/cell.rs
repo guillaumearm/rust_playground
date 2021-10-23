@@ -100,6 +100,13 @@ impl Cell {
         }
     }
 
+    pub fn is_marked(&self) -> bool {
+        match self {
+            Cell::MarkedEarth(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn increment(&mut self) -> Result<(), error::Increment> {
         let cell = *self;
         match *self {
