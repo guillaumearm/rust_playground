@@ -9,23 +9,18 @@ pub mod map;
 pub type AppResult<T = String> = map::MapResult<T>;
 
 pub fn run(raw_map: &str) -> AppResult {
-    let map: map::Map = raw_map.parse()?;
-    let filler = Filler::new(map);
+    let filler = Filler::new(raw_map.parse()?);
+    let map = &filler.map;
 
-    let coords = filler
-        .map
-        .cursor()
-        .iter()
-        .filter(|c| c.read().is_markable())
-        .map(|c| c.coord());
+    let markable_cursors = map.cursor().iter().filter(|c| c.read().is_markable());
 
-    for coord in coords {
-        if filler.fill(coord).is_none() {
+    for cursor in markable_cursors {
+        if filler.fill(cursor).is_none() {
             break;
         }
     }
 
-    Ok(filler.map.to_string())
+    Ok(map.to_string())
 }
 
 #[cfg(test)]

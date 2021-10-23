@@ -56,6 +56,8 @@ impl From<Vec<Error>> for ErrorList {
     }
 }
 
+impl std::error::Error for ErrorList {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
