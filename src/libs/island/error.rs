@@ -1,5 +1,12 @@
 use std::fmt;
 
+/// # A count_island error
+///
+/// - `EmptyMap`: an empty string "" has been parsed
+/// - `EmptyLine`: `usize` is the line number
+/// - `InvalidChar`: a not allowed char is present at line:col
+///
+/// valid chars are `'#'` | `' '` | `'0'..'z'`
 #[derive(PartialEq)]
 pub enum Error {
     EmptyMap,
@@ -31,6 +38,9 @@ impl fmt::Debug for Error {
 
 impl std::error::Error for Error {}
 
+/// # List of [`Error`]
+///
+/// all errors are joined with a `\n` character
 #[derive(PartialEq)]
 pub struct ErrorList(pub Vec<Error>);
 

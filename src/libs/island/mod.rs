@@ -8,8 +8,10 @@ mod map;
 
 pub use error::*;
 
+/// The result returned by [`run`]
 pub type AppResult<T = String> = map::MapResult<T>;
 
+/// Apply the count_island logic on a raw map and get a new raw map wrapped in a [`AppResult`]
 pub fn run(raw_map: &str) -> AppResult {
     let filler = Filler::new(raw_map.parse()?);
     let map = &filler.map;
