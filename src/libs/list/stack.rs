@@ -1,26 +1,33 @@
-use super::StackIter;
+// use super::StackIter;
+use std::cell::RefCell;
 use std::mem;
+use std::rc::Rc;
 
-pub type Item = u32;
+mod stack_iter;
+use stack_iter::StackIter;
 
-pub enum Stack {
-    Node { item: Item, next: Box<Stack> },
+pub type Item<T> = Rc<RefCell<T>>;
+
+pub enum Stack<T> {
+    Node { item: Item<T>, next: Box<Stack<T>> },
     TailNode,
 }
 
 use Stack::*;
 
-impl Stack {
+impl<T> Stack<T> {
     pub fn new() -> Self {
         TailNode
     }
 
-    pub fn push(&mut self, item: Item) {
+    pub fn push(&mut self, item: T) {
+        let item = Rc::new(RefCell::new(item));
         let next = Box::new(mem::take(self));
+
         *self = Node { item, next };
     }
 
-    pub fn pop(&mut self) -> Option<Item> {
+    pub fn pop(&mut self) -> Option<Item<T>> {
         let item = self.peak()?;
         let next = self.get_next_mut()?;
 
@@ -29,18 +36,20 @@ impl Stack {
         return Some(item);
     }
 
-    pub fn peak(&self) -> Option<Item> {
+    pub fn peak(&self) -> Option<Item<T>> {
         match self {
             TailNode => None,
-            Node { item, .. } => Some(*item), // copy here !
+            Node { item, .. } => {
+                return Some(item.clone());
+            }
         }
     }
 
-    pub fn iter(&self) -> StackIter {
+    pub fn iter(&self) -> StackIter<T> {
         StackIter::new(self)
     }
 
-    pub fn get_next(&self) -> Option<&Self> {
+    fn get_next(&self) -> Option<&Self> {
         match self {
             TailNode => None,
             Node { next, .. } => Some(next),
@@ -55,7 +64,7 @@ impl Stack {
     }
 }
 
-impl Default for Stack {
+impl<T> Default for Stack<T> {
     fn default() -> Self {
         Stack::new()
     }
@@ -74,8 +83,8 @@ mod tests {
 
         stack.push(1);
 
-        assert_eq!(Some(1), stack.peak());
-        assert_eq!(Some(1), stack.pop());
+        assert_eq!(1, *stack.peak().unwrap().borrow());
+        assert_eq!(1, *stack.pop().unwrap().borrow());
 
         assert_eq!(None, stack.peak());
         assert_eq!(None, stack.pop());
@@ -88,17 +97,17 @@ mod tests {
         assert_eq!(None, stack.peak());
 
         stack.push(1);
-        assert_eq!(Some(1), stack.peak());
+        assert_eq!(1, *stack.peak().unwrap().borrow());
 
         stack.push(2);
-        assert_eq!(Some(2), stack.peak());
+        assert_eq!(2, *stack.peak().unwrap().borrow());
 
         stack.push(3);
-        assert_eq!(Some(3), stack.peak());
+        assert_eq!(3, *stack.peak().unwrap().borrow());
 
-        assert_eq!(Some(3), stack.pop());
-        assert_eq!(Some(2), stack.pop());
-        assert_eq!(Some(1), stack.pop());
+        assert_eq!(3, *stack.pop().unwrap().borrow());
+        assert_eq!(2, *stack.pop().unwrap().borrow());
+        assert_eq!(1, *stack.pop().unwrap().borrow());
         assert_eq!(None, stack.pop());
     }
 
@@ -110,7 +119,7 @@ mod tests {
         stack.push(2);
         stack.push(3);
 
-        let data: Vec<u32> = stack.iter().collect();
+        let data: Vec<u32> = stack.iter().map(|cell| *cell.borrow()).collect();
 
         assert_eq!(vec![3, 2, 1], data);
     }
@@ -123,8 +132,8 @@ mod tests {
         stack.push(2);
         stack.push(3);
 
-        let data: Vec<u32> = stack.iter().collect();
-        let data2: Vec<u32> = stack.iter().collect();
+        let data: Vec<u32> = stack.iter().map(|cell| *cell.borrow()).collect();
+        let data2: Vec<u32> = stack.iter().map(|cell| *cell.borrow()).collect();
 
         assert_eq!(vec![3, 2, 1], data);
         assert_eq!(vec![3, 2, 1], data2);
